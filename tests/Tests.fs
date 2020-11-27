@@ -1172,9 +1172,27 @@ let unknownColumnTest =
             "Check invalid column fails with expected exception type"
     }
 
+let wip = testList "" [
+    test "Sql.executeTransaction works with a parameterised query that is missing parameters" {
+        use db = buildDatabase()
+        Sql.connect db.ConnectionString
+        |> Sql.query "CREATE TABLE users (user_id serial primary key, username text not null, active bit not null, salary money not null)"
+        |> Sql.executeNonQuery
+        |> ignore
+
+        Sql.connect db.ConnectionString
+        |> Sql.executeTransaction [
+            "INSERT INTO users (username, active, salary) VALUES (@username, @active, @salary)", []
+        ]
+        |> function
+        | Error err -> raise err
+        | Ok insertions -> Expect.equal 1 (insertions.Length) "A row was inserted"
+    }
+]
+
 let errorTests =
     testList "Custom Exception tests" ( unknownColumnTest::missingQueryTests@noResultsTests )
 let allTests = testList "All tests" [ tests; errorTests ]
 
 [<EntryPoint>]
-let main args = runTestsWithArgs defaultConfig args allTests
+let main args = runTestsWithArgs defaultConfig args wip
